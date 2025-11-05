@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 import serial
+import struct
 import time
 
 class WheelSerialBridge(Node):
@@ -12,11 +13,9 @@ class WheelSerialBridge(Node):
         # Parameters
         self.declare_parameter('port', '/dev/ttyACM0')
         self.declare_parameter('baudrate', 115200)
-        self.declare_parameter('send_interval', 0.1)  # check every 0.1 s
 
         port = self.get_parameter('port').get_parameter_value().string_value
         baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
-        self.send_interval = self.get_parameter('send_interval').get_parameter_value().double_value
 
         # Open serial port
         self.ser = serial.Serial(port, baudrate, timeout=1)
@@ -24,7 +23,7 @@ class WheelSerialBridge(Node):
         self.get_logger().info(f"Serial port opened: {port} @ {baudrate}")
 
         # Last command sent
-        self.last_cmd = None
+        self.last_packet = None
 
         # Subscribe to cmd_vel
         self.sub = self.create_subscription(
@@ -35,24 +34,27 @@ class WheelSerialBridge(Node):
         )
 
     def cmd_vel_callback(self, msg: Twist):
-        # Map /cmd_vel to hardcoded motor commands
+        # Map /cmd_vel to hardcoded motor velocities (int16)
         if msg.linear.x > 0.0:
-            cmd = "VEL,2000,2000,0\r\n"
+            vel_r, vel_l, vel_kick = 1800, 1800, 0
         elif msg.linear.x < 0.0:
-            cmd = "VEL,-2000,-2000,0\r\n"
+            vel_r, vel_l, vel_kick = -1800, -1800, 0
         elif msg.angular.z > 0.0:
-            cmd = "VEL,-2000,2000,0\r\n"
+            vel_r, vel_l, vel_kick = 1800, -1800, 0
         elif msg.angular.z < 0.0:
-            cmd = "VEL,2000,-2000,0\r\n"
+            vel_r, vel_l, vel_kick = -1800, 1800, 0
         else:
-            cmd = "VEL,0,0,0\r\n"
+            vel_r, vel_l, vel_kick = 0, 0, 0
 
-        # Only send if it is different from last command
-        if cmd != self.last_cmd:
-            self.ser.write(cmd.encode('utf-8'))
-            self.ser.flush()  # ensure hardware receives it immediately
-            self.get_logger().info(f"Sent: {cmd.strip()}")
-            self.last_cmd = cmd
+        # Pack as little-endian 3 x int16
+        packet = struct.pack('<hhh', vel_r, vel_l, vel_kick)
+
+        # Only send if different from last packet
+        # if packet != self.last_packet:
+        self.ser.write(packet)
+        self.ser.flush()
+        self.get_logger().info(f"Sent: {vel_r}, {vel_l}, {vel_kick}")
+            # self.last_packet = packet
 
 def main(args=None):
     rclpy.init(args=args)
