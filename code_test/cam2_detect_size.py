@@ -6,7 +6,7 @@ angle = 70
 dim = [0,30,180]
 place_ang = 10
 
-model = YOLO('/home/ibuki/runs/detect/train17/weights/best.pt')
+model = YOLO('/home/ibuki/golf_ws/golf_robot_ros/code_test/best.pt')
 print(model.names)
 
 # Open two cameras
