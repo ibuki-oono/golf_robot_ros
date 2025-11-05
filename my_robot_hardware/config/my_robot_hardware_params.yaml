@@ -1,4 +1,10 @@
-my_robot_system:
+# config/my_robot_hardware_params.yaml
+my_robot_system_hardware:
   ros__parameters:
-    port_name: "/dev/ttyUSB0"
+    type: "my_robot_hardware/MyRobotSystemHardware"  # Your hardware interface plugin
+    port_name: "/dev/ttyUSB0"   # Arduino serial port
     baudrate: 115200
+    joints:
+      - name: "right_wheel_joint"   # Corresponds to vel_r
+      - name: "left_wheel_joint"    # Corresponds to vel_l
+      - name: "kick_joint"          # Corresponds to vel_kick

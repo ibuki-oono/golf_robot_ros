@@ -7,15 +7,16 @@ def generate_launch_description():
             package='controller_manager',
             executable='ros2_control_node',
             parameters=[
-                'urdf/my_robot_hardware.urdf',
-                'config/my_robot_hardware_params.yaml',
-                'config/diff_drive_controller.yaml'
+                'urdf/my_robot_hardware.urdf',       # your robot description
+                'config/my_robot_hardware_params.yaml',  # hardware params including serial
+                'config/diff_drive_controller.yaml'   # controller config
             ],
             output='screen'
         ),
         Node(
             package='controller_manager',
             executable='spawner',
-            arguments=['diff_drive_controller', '--controller-manager', '/controller_manager']
+            arguments=['diff_drive_controller', '--controller-manager', '/controller_manager'],
+            output='screen'
         )
     ])

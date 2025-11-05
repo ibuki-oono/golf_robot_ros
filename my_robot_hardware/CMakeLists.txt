@@ -9,7 +9,8 @@ find_package(ament_cmake REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
-find_package(serial REQUIRED)
+
+include_directories(include)
 
 add_library(my_robot_system_hardware SHARED
   src/my_robot_system.cpp
@@ -19,7 +20,7 @@ ament_target_dependencies(my_robot_system_hardware
   hardware_interface
   pluginlib
   rclcpp_lifecycle
-  serial
+#   serial
 )
 
 pluginlib_export_plugin_description_file(hardware_interface plugin_description.xml)
