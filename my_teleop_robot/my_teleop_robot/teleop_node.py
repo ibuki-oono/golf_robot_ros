@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Int32
+from std_msgs.msg import Int16, Int32
 import sys, select, termios, tty
 
 msg = """
@@ -57,7 +57,7 @@ class TeleopNode(Node):
     def __init__(self):
         super().__init__('my_teleop_robot')
         self.pub_cmd = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.pub_kick = self.create_publisher(Int32, '/kick_vel', 10)
+        self.pub_kick = self.create_publisher(Int16, '/kick_vel', 10)
 
         self.linear_speed = 0.5
         self.angular_speed = 1.0
@@ -101,7 +101,7 @@ class TeleopNode(Node):
                     break
 
                 # Publish kick velocity
-                kick_msg = Int32()
+                kick_msg = Int16()
                 kick_msg.data = self.kick_value if self.kick_active else 0
                 self.pub_kick.publish(kick_msg)
 
@@ -110,7 +110,7 @@ class TeleopNode(Node):
         finally:
             # Stop robot and kick
             self.pub_cmd.publish(Twist())
-            self.pub_kick.publish(Int32(data=0))
+            self.pub_kick.publish(Int16(data=0))
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
 
 def main(args=None):
