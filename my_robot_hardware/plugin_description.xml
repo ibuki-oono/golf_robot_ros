@@ -1,7 +1,0 @@
-<library path="libmy_robot_system_hardware.so">
-  <class name="my_robot_hardware/MyRobotSystemHardware"
-         type="my_robot_hardware::MyRobotSystemHardware"
-         base_class_type="hardware_interface::SystemInterface">
-    <description>Serial-based hardware interface for my robot</description>
-  </class>
-</library>
