@@ -1,0 +1,4 @@
+my_robot_system:
+  ros__parameters:
+    port_name: "/dev/ttyUSB0"
+    baudrate: 115200
