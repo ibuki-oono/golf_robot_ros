@@ -10,28 +10,37 @@ import math
 class PoleTracker(Node):
     def __init__(self):
         super().__init__('pole_tracker')
+
+        # Subscribe to LiDAR
         self.subscription = self.create_subscription(
             LaserScan,
             '/scan',
             self.scan_callback,
             qos_profile_sensor_data
         )
+
+        # Publisher: generalized pole data
         self.publisher = self.create_publisher(Point, '/pole_pos', 10)
 
-        self.pole_angle_est = math.radians(-90.0)  # initial angle guess (backwards)
-        self.omega_deg = 7.0                      # window ±deg around estimate
-        self.alpha = 0.3                           # EMA smoothing
+        # Internal state
+        self.pole_angle_est = math.radians(-90.0)  # initial guess
+        self.omega_deg = 10.0                      # detection window ±deg
+        self.alpha = 0.95                          # EMA for angle only
+
+        # Angle center for normalization
+        self.angle_center_deg = -90.0              # angle that maps to 0
+        self.angle_center_rad = math.radians(self.angle_center_deg)
 
     def normalize_angle(self, angle):
+        """Wrap angle to [-pi, pi]."""
         return math.atan2(math.sin(angle), math.cos(angle))
 
     def scan_callback(self, msg: LaserScan):
+        # --- get scan angles and ranges ---
         ranges = np.array(msg.ranges)
-        angle_min = msg.angle_min
-        angle_increment = msg.angle_increment
-        angles = angle_min + np.arange(len(ranges)) * angle_increment
+        angles = msg.angle_min + np.arange(len(ranges)) * msg.angle_increment
 
-        # Only keep window around estimated angle
+        # --- select points within detection window ---
         omega_rad = math.radians(self.omega_deg)
         normalized = np.array([
             self.normalize_angle(a - self.pole_angle_est) for a in angles
@@ -41,7 +50,7 @@ class PoleTracker(Node):
         filtered_ranges = ranges[mask]
         filtered_angles = angles[mask]
 
-        # ✅ Remove invalid LiDAR values: 0.0, inf, nan
+        # --- remove invalid points ---
         valid_idx = np.where(
             (filtered_ranges > 0.01) &
             (~np.isinf(filtered_ranges)) &
@@ -55,27 +64,30 @@ class PoleTracker(Node):
         filtered_ranges = filtered_ranges[valid_idx]
         filtered_angles = filtered_angles[valid_idx]
 
-        # nearest point = pole candidate
+        # --- find nearest point ---
         min_idx = np.argmin(filtered_ranges)
         pole_distance = float(filtered_ranges[min_idx])
-        pole_angle = float(filtered_angles[min_idx])
+        detected_angle = float(filtered_angles[min_idx])
 
-        # Update estimate with EMA
+        # --- smooth angle only ---
         self.pole_angle_est = self.normalize_angle(
-            (1 - self.alpha) * self.pole_angle_est + self.alpha * pole_angle
+            (1 - self.alpha) * self.pole_angle_est + self.alpha * detected_angle
         )
 
-        # Publish
+        # --- generalize angle relative to center ---
+        relative_angle = self.normalize_angle(self.pole_angle_est - self.angle_center_rad)
+
+        # --- publish generalized data ---
         msg_out = Point()
-        msg_out.x = pole_distance       # distance [m]
-        msg_out.y = self.pole_angle_est # angle [rad]
+        msg_out.x = pole_distance      # raw distance in meters
+        msg_out.y = relative_angle     # angle centered at -90°
         msg_out.z = 0.0
 
         self.publisher.publish(msg_out)
 
         self.get_logger().info(
             f"Published pole_pos: distance={pole_distance:.2f} m, "
-            f"angle={math.degrees(self.pole_angle_est):.2f}°"
+            f"angle={math.degrees(relative_angle):.2f}° (centered at {self.angle_center_deg}°)"
         )
 
 def main(args=None):
