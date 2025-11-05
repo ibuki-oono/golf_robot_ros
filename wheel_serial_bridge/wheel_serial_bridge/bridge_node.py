@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import Int16
 import serial
 import struct
 import time
@@ -22,39 +23,60 @@ class WheelSerialBridge(Node):
         time.sleep(2)  # wait for hardware ready
         self.get_logger().info(f"Serial port opened: {port} @ {baudrate}")
 
-        # Last command sent
+        # Last packet sent
         self.last_packet = None
 
-        # Subscribe to cmd_vel
-        self.sub = self.create_subscription(
+        # Latest velocities
+        self.vel_r = 0
+        self.vel_l = 0
+        self.vel_kick = 0
+
+        # Subscribe to /cmd_vel
+        self.sub_cmd_vel = self.create_subscription(
             Twist,
             '/cmd_vel',
             self.cmd_vel_callback,
             10
         )
 
+        # Subscribe to /kick_vel
+        self.sub_kick = self.create_subscription(
+            Int16,
+            '/kick_vel',
+            self.kick_vel_callback,
+            10
+        )
+
     def cmd_vel_callback(self, msg: Twist):
         # Map /cmd_vel to hardcoded motor velocities (int16)
         if msg.linear.x > 0.0:
-            vel_r, vel_l, vel_kick = 1800, 1800, 0
+            self.vel_r, self.vel_l = 1800, 1800
         elif msg.linear.x < 0.0:
-            vel_r, vel_l, vel_kick = -1800, -1800, 0
+            self.vel_r, self.vel_l = -1800, -1800
         elif msg.angular.z > 0.0:
-            vel_r, vel_l, vel_kick = 1800, -1800, 0
+            self.vel_r, self.vel_l = 1800, -1800
         elif msg.angular.z < 0.0:
-            vel_r, vel_l, vel_kick = -1800, 1800, 0
+            self.vel_r, self.vel_l = -1800, 1800
         else:
-            vel_r, vel_l, vel_kick = 0, 0, 0
+            self.vel_r, self.vel_l = 0, 0
 
+        self.send_packet_if_changed()
+
+    def kick_vel_callback(self, msg: Int16):
+        # Update kick velocity
+        self.vel_kick = msg.data
+        self.send_packet_if_changed()
+
+    def send_packet_if_changed(self):
         # Pack as little-endian 3 x int16
-        packet = struct.pack('<hhh', vel_r, vel_l, vel_kick)
+        packet = struct.pack('<hhh', self.vel_r, self.vel_l, self.vel_kick)
 
-        # Only send if different from last packet
-        # if packet != self.last_packet:
-        self.ser.write(packet)
-        self.ser.flush()
-        self.get_logger().info(f"Sent: {vel_r}, {vel_l}, {vel_kick}")
-            # self.last_packet = packet
+        # Only send if packet changed
+        if packet != self.last_packet:
+            self.ser.write(packet)
+            self.ser.flush()
+            self.get_logger().info(f"Sent: vel_r={self.vel_r}, vel_l={self.vel_l}, vel_kick={self.vel_kick}")
+            self.last_packet = packet
 
 def main(args=None):
     rclpy.init(args=args)
