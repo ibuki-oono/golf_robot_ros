@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, Point
 from std_msgs.msg import Int16
+import time
 
 class BallFollowNode(Node):
     def __init__(self):
@@ -79,37 +80,50 @@ class BallFollowNode(Node):
 
             # If distance < 0.5, stop and then go straight for 3 seconds
             if distance < 0.5:
-                if self.straight_start_time is None:
-                    # Start moving straight for 3 seconds
-                    self.straight_start_time = self.get_clock().now()
-                    twist.linear.x = self.straight_speed
-                    twist.angular.z = 0.0
-                else:
-                    elapsed_straight = (self.get_clock().now() - self.straight_start_time).nanoseconds / 1e9
-                    if elapsed_straight < 5.0:  # Move straight for 3 seconds
-                        twist.linear.x = self.straight_speed
-                        twist.angular.z = 0.0
-                    elif elapsed_straight >= 5.0 and (self.get_clock().now() - self.last_kick_time).nanoseconds / 1e9 >= 5.0:
-                        # Send kick for 1 second
-                        self.kick_pub.publish(Int16(data=self.kick_power))
-                        self.kick_flag = True
-                        self.kick_start_time = self.get_clock().now()
-                        twist.linear.x = 0.0
-                        twist.angular.z = 0.0
-                        self.last_kick_time = self.get_clock().now()
-                    elif self.kick_flag:
-                        kick_elapsed = (self.get_clock().now() - self.kick_start_time).nanoseconds / 1e9
-                        if kick_elapsed >= 0.5:
-                            self.kick_flag = False
-                            self.straight_start_time = None
-                            self.kick_pub.publish(Int16(data=0))
-                        twist.linear.x = 0.0
-                        twist.angular.z = 0.0
+                twist.linear.x = self.straight_speed  # Approach slowly
+                twist.angular.z = 0.0
+                self.cmd_pub.publish(twist)
+                time.sleep(5)  # Small delay to ensure stop
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+                self.cmd_pub.publish(twist)
+                time.sleep(0.5)
+                self.kick_pub.publish(Int16(data=self.kick_power))
+                time.sleep(1)
+                self.kick_pub.publish(Int16(data=0))
+            #     if self.straight_start_time is None:
+            #         # Start moving straight for 3 seconds
+            #         self.straight_start_time = self.get_clock().now()
+            #         twist.linear.x = self.straight_speed
+            #         twist.angular.z = 0.0
+            #     else:
+            #         elapsed_straight = (self.get_clock().now() - self.straight_start_time).nanoseconds / 1e9
+            #         if elapsed_straight < 5.0:  # Move straight for 3 seconds
+            #             twist.linear.x = self.straight_speed
+            #             twist.angular.z = 0.0
+            #         elif elapsed_straight >= 5.0 and (self.get_clock().now() - self.last_kick_time).nanoseconds / 1e9 >= 5.0:
+            #             # Send kick for 1 second
+            #             self.kick_pub.publish(Int16(data=self.kick_power))
+            #             self.kick_flag = True
+            #             self.kick_start_time = self.get_clock().now()
+            #             twist.linear.x = 0.0
+            #             twist.angular.z = 0.0
+            #             self.last_kick_time = self.get_clock().now()
+            #         elif self.kick_flag:
+            #             kick_elapsed = (self.get_clock().now() - self.kick_start_time).nanoseconds / 1e9
+            #             if kick_elapsed >= 0.5:
+            #                 self.kick_flag = False
+            #                 self.straight_start_time = None
+            #                 self.kick_pub.publish(Int16(data=0))
+            #             twist.linear.x = 0.0
+            #             twist.angular.z = 0.0
             else:
                 # Move straight if aligned and distance > 0.5
                 twist.linear.x = self.straight_speed
+                self.straight_start_time = None
 
         self.cmd_pub.publish(twist)
+        self.kick_pub.publish(Int16(data=0))
 
 
 def main(args=None):
