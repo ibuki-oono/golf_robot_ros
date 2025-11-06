@@ -23,7 +23,7 @@ class BallFollowNode(Node):
         # Ball data
         self.last_ball = Point()
         self.filtered_distance = 0.0
-        self.rc_alpha = 0.2  # RC filter coefficient
+        self.rc_alpha = 0.7  # RC filter coefficient
         self.prev_ball = Point()
         self.last_change_time = self.get_clock().now()
         self.timeout_sec = 3.0
@@ -32,6 +32,7 @@ class BallFollowNode(Node):
         self.kick_flag = False
         self.kick_start_time = None
         self.straight_start_time = None
+        self.last_kick_time = self.get_clock().now()
 
         self.timer = self.create_timer(0.05, self.timer_callback)  # 20Hz
 
@@ -75,30 +76,33 @@ class BallFollowNode(Node):
             twist.linear.x = 0.0
         else:
             twist.angular.z = 0.0
-            # Move straight if aligned
-            if distance > 0.36:
-                twist.linear.x = self.straight_speed
-            else:
-                # Move straight for 2 seconds and then kick
+
+            # If distance < 0.5, stop and then go straight for 3 seconds
+            if distance < 0.5:
                 if self.straight_start_time is None:
+                    # Start moving straight for 3 seconds
                     self.straight_start_time = self.get_clock().now()
                     twist.linear.x = self.straight_speed
                 else:
                     elapsed_straight = (self.get_clock().now() - self.straight_start_time).nanoseconds / 1e9
-                    if elapsed_straight < 4.0: # Move straight for 2 seconds
+                    if elapsed_straight < 3.0:  # Move straight for 3 seconds
                         twist.linear.x = self.straight_speed
-                    elif not self.kick_flag:
-                        # Kick for 1 second
+                    elif elapsed_straight >= 3.0 and (self.get_clock().now() - self.last_kick_time).nanoseconds / 1e9 >= 5.0:
+                        # Send kick for 1 second
                         self.kick_pub.publish(Int16(data=self.kick_power))
                         self.kick_flag = True
                         self.kick_start_time = self.get_clock().now()
                         twist.linear.x = 0.0
+                        self.last_kick_time = self.get_clock().now()
                     elif self.kick_flag:
                         kick_elapsed = (self.get_clock().now() - self.kick_start_time).nanoseconds / 1e9
                         if kick_elapsed >= 1.0:
                             self.kick_flag = False
                             self.straight_start_time = None
                         twist.linear.x = 0.0
+            else:
+                # Move straight if aligned and distance > 0.5
+                twist.linear.x = self.straight_speed
 
         self.cmd_pub.publish(twist)
 
