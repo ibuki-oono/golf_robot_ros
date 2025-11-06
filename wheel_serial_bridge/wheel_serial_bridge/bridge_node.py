@@ -50,13 +50,13 @@ class WheelSerialBridge(Node):
     def cmd_vel_callback(self, msg: Twist):
         # Map /cmd_vel to hardcoded motor velocities (int16)
         if msg.linear.x > 0.0:
-            self.vel_r, self.vel_l = 1800, 1800
+            self.vel_r, self.vel_l = 2200, 2200
         elif msg.linear.x < 0.0:
-            self.vel_r, self.vel_l = -1800, -1800
+            self.vel_r, self.vel_l = -2200, -2200
         elif msg.angular.z > 0.0:
-            self.vel_r, self.vel_l = 1800, -1800
+            self.vel_r, self.vel_l = 2200, -2200
         elif msg.angular.z < 0.0:
-            self.vel_r, self.vel_l = -1800, 1800
+            self.vel_r, self.vel_l = -2200, 2200
         else:
             self.vel_r, self.vel_l = 0, 0
 
