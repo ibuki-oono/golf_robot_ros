@@ -79,7 +79,7 @@ class BallFollowNode(Node):
             twist.angular.z = 0.0
 
             # If distance < 0.5, stop and then go straight for 3 seconds
-            if distance < 0.36:
+            if distance < 0.4:
                 twist.linear.x = self.straight_speed  # Approach slowly
                 twist.angular.z = 0.0
                 self.cmd_pub.publish(twist)
