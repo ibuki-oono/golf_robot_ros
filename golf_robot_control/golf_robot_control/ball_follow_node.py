@@ -27,7 +27,7 @@ class BallFollowNode(Node):
         self.rc_alpha = 0.7  # RC filter coefficient
         self.prev_ball = Point()
         self.last_change_time = self.get_clock().now()
-        self.timeout_sec = 3.0
+        self.timeout_sec = 5.0
 
         # Kick logic
         self.kick_flag = False
@@ -61,9 +61,9 @@ class BallFollowNode(Node):
         if elapsed > self.timeout_sec:
             distance = 1.0
             if self.last_ball.y >= 0:
-                angle = 0.5
+                angle = 0.3
             else:
-                angle = -0.5
+                angle = -0.3
         else:
             distance = self.last_ball.x
             angle = self.last_ball.y
@@ -79,7 +79,7 @@ class BallFollowNode(Node):
             twist.angular.z = 0.0
 
             # If distance < 0.5, stop and then go straight for 3 seconds
-            if distance < 0.4:
+            if distance < 0.35:
                 twist.linear.x = self.straight_speed  # Approach slowly
                 twist.angular.z = 0.0
                 self.cmd_pub.publish(twist)
@@ -91,6 +91,7 @@ class BallFollowNode(Node):
                 self.kick_pub.publish(Int16(data=self.kick_power))
                 time.sleep(1)
                 self.kick_pub.publish(Int16(data=0))
+           	self.last_change_time = self.get_clock().now()
             #     if self.straight_start_time is None:
             #         # Start moving straight for 3 seconds
             #         self.straight_start_time = self.get_clock().now()
