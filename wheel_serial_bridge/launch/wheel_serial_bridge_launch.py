@@ -9,7 +9,7 @@ def generate_launch_description():
             name='wheel_serial_bridge',
             output='screen',
             parameters=[
-                {'port': '/dev/ttyACM0'},
+                {'port': '/dev/ttyACM1'},
                 {'baudrate': 115200},
                 {'left_wheel_joint': 'left_wheel_joint'},
                 {'right_wheel_joint': 'right_wheel_joint'}
