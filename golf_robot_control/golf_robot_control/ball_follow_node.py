@@ -91,7 +91,7 @@ class BallFollowNode(Node):
                 self.kick_pub.publish(Int16(data=self.kick_power))
                 time.sleep(1)
                 self.kick_pub.publish(Int16(data=0))
-           	self.last_change_time = self.get_clock().now()
+                self.last_change_time = self.get_clock().now()
             #     if self.straight_start_time is None:
             #         # Start moving straight for 3 seconds
             #         self.straight_start_time = self.get_clock().now()
